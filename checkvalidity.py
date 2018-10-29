@@ -47,10 +47,10 @@ def guess_correct_molecules(readfile, writefile, n, multi):
     #'''
     try:
         if not nx.is_connected(G):
-            print "Not connected"
+            print("Not connected")
             return False
     except:
-        print "Null graph"
+        print("Null graph")
         return False
     #'''
     nodes = len(G.nodes())
@@ -184,5 +184,5 @@ if __name__ == "__main__":
     with open('smiles.smi', 'w') as f:
         for smile in smiles:
             f.write(smile+"\n")
-    print "Valid:", valid, "Total:", total, "moltotal:", moltotal, "Perc:", valid/moltotal
+    print("Valid:", valid, "Total:", total, "moltotal:", moltotal, "Perc:", valid/moltotal)
     # drawchem(mols)

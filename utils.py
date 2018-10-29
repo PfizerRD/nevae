@@ -11,6 +11,8 @@ import glob
 from collections import defaultdict
 from math import log
 
+from rdkit import Chem
+
 
 def change(p, w, hnodes, nodes, bin_dim, degree, indicator):
     p_matrix = np.zeros((nodes - len(hnodes), nodes - len(hnodes)))
@@ -365,6 +367,85 @@ def load_embeddings(fname, z_dim):
     return embd
 
 
+def mol_to_nx(mol):
+    G = nx.Graph()
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() not in ['C', 'H', 'O', 'N']:
+            raise ValueError
+        G.add_node(atom.GetIdx())
+    for bond in mol.GetBonds():
+        if bond.GetBondType() not in bond_type_to_weight:
+            raise ValueError
+        G.add_edge(bond.GetBeginAtomIdx(),
+                bond.GetEndAtomIdx(),
+                weight=bond_type_to_weight[bond.GetBondType()])
+    return G
+
+
+def load_data_from_smiles(filename, num=0, bin_dim=3):
+
+    adjlist = []
+    featurelist = []
+    weightlist = []
+    weight_binlist = []
+    edgelist = []
+    hdelist = []
+
+    with open(filename, 'r') as infile:
+        for line in infile:
+            # read in SMILES and convert to rdkit molecules with explicit hydrogens
+            mol = Chem.AddHs(Chem.MolFromSmiles(line.strip()))
+
+            # convert molecule to networkx graph
+            G = mol_to_nx(mol)
+
+            n = num
+            for i in range(n):
+                if i not in G.nodes():
+                    G.add_node(i)
+
+            # We assume there are only 4 types of atoms
+            degreemat = np.zeros((n, 4), dtype=np.float)
+            #degreemat = np.zeros((n,1), dtype=np.float)
+            count = np.zeros(4)
+
+            for u in G.nodes():
+                if G.degree(u) == 3 or G.degree(u) == 5:
+                    index = 2
+                else:
+                    index = G.degree(u) - 1
+                degreemat[int(u)][index] = 1
+                #degreemat[int(u)][0] = (G.degree(u)*1.0)/(n-1)
+                # if update_count:
+                #     count[G.degree(u)] += 1
+
+            hde = (2 * count[3] + 2 + count[2] - count[0]) / 2
+            hdelist.append(hde)
+
+            try:
+                weight = np.array(nx.adjacency_matrix(G).todense())
+                adj = np.zeros([n, n])
+                weight_bin = np.zeros([n, n, bin_dim])
+                edges = []
+                for i in range(n):
+                    for j in range(n):
+                        if weight[i][j] > 0:
+                            adj[i][j] = 1
+                            weight_bin[i][j][weight[i][j]-1] = 1
+                            if j > i:
+                                edges.append((i, j, weight[i][j]))
+                adjlist.append(adj)
+                weightlist.append(weight)
+                weight_binlist.append(weight_bin)
+                featurelist.append(degreemat)
+                edgelist.append(edges)
+            except:
+                print("Error")
+                continue
+
+    return (adjlist, weightlist, weight_binlist, featurelist, edgelist, hdelist)
+
+
 def load_data(filename, num=0, bin_dim=3):
     path = filename+"/*"
     adjlist = []
@@ -376,18 +457,19 @@ def load_data(filename, num=0, bin_dim=3):
     filenumber = int(len(glob.glob(path)) * 1)
 
     for fname in sorted(glob.glob(path))[:filenumber]:
-        f = open(fname, 'r')
+        f = open(fname, 'rb')
         try:
             G = nx.read_edgelist(f, nodetype=int)
         except:
-            f = open(fname, 'r')
+            f = open(fname, 'rb')
             lines = f.read()
             linesnew = lines.replace('{', '{\'weight\':').split('\n')
             G = nx.parse_edgelist(linesnew, nodetype=int)
 
-            # print "Except"
-            # continue
+            print("Except")
+            continue
         f.close()
+
         n = num
         for i in range(n):
             if i not in G.nodes():
@@ -427,9 +509,12 @@ def load_data(filename, num=0, bin_dim=3):
             weight_binlist.append(weight_bin)
             featurelist.append(degreemat)
             edgelist.append(edges)
+
         except:
             print("Error")
             continue
+
+
 
     return (adjlist, weightlist, weight_binlist, featurelist, edgelist, hdelist)
 

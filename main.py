@@ -45,7 +45,8 @@ def add_arguments(parser):
     parser.add_argument("--random_walk", type=int,
                         default=5, help="random walk depth")
     parser.add_argument("--z_dim", type=int, default=5, help="z_dim")
-    parser.add_argument("--nodes", type=int, default=5, help="z_dim")
+    # parser.add_argument("--nodes", type=int, default=30, help="num_of_nodes")
+    parser.add_argument("--num_batches", type=int, default=100, help="number of batches")
     parser.add_argument("--bin_dim", type=int, default=3, help="bin_dim")
 
     parser.add_argument("--graph_file", type=str, default=None,
@@ -62,11 +63,11 @@ def add_arguments(parser):
                         help="Store log/model files.")
 
 
-def create_hparams(flags):
+def create_hparams(flags, data_dir):
     """Create training hparams."""
     return tf.contrib.training.HParams(
         # Data
-        graph_file=flags.graph_file,
+        graph_file=data_dir,
         out_dir=flags.out_dir,
         z_dir=flags.z_dir,
         sample_file=flags.sample_file,
@@ -79,7 +80,8 @@ def create_hparams(flags):
         num_epochs=flags.num_epochs,
         random_walk=flags.random_walk,
         log_every=flags.log_every,
-        nodes=flags.nodes,
+        nodes=node_num,
+        num_batches=flags.num_batches,
         bin_dim=flags.bin_dim,
         mask_weight=flags.mask_weight,
         # sample
@@ -91,49 +93,25 @@ if __name__ == '__main__':
     nmt_parser = argparse.ArgumentParser()
     add_arguments(nmt_parser)
     FLAGS, unparsed = nmt_parser.parse_known_args()
-    hparams = create_hparams(FLAGS)
 
-    # loading the data from a file
-    adj, weight, weight_bin, features, edges, hde = load_data(
-        hparams.graph_file, hparams.nodes, hparams.bin_dim)
-    num_nodes = adj[0].shape[0]
-    num_features = features[0].shape[1]
-    print("Num features", num_features)
-    e = max([len(edge) for edge in edges])
+    for batch in range(FLAGS.num_batches):
+        for node_num in range(30, 56):
+            data_dir = os.path.join(FLAGS.graph_file, 'n_{}'.format(node_num))
+            hparams = create_hparams(FLAGS, data_dir)
 
-    log_fact_k = log_fact(e)
-    #model2 = VAEG(hparams, placeholders, hparams.nodes, 1, edges, log_fact_k)
-    # print("Debug", num_nodes, adj[0][0])
-    # Training
-    model = VAEG(hparams, placeholders, num_nodes,
-                 num_features, edges, log_fact_k, hde)
-    model.restore(hparams.out_dir)
-    # model.initialize()
-    model.train(placeholders, hparams, adj, weight, weight_bin, features)
+            # loading the data from a file
+            adj, weight, weight_bin, features, edges, hde = load_data(data_dir, node_num, hparams.bin_dim)
+            num_nodes = adj[0].shape[0]
+            num_features = features[0].shape[1]
+            print("Num nodes: {}".format(num_nodes))
+            print("Num features: {}".format(num_features))
+            print("Size adj: {}".format(len(adj)))
+            e = max([len(edge) for edge in edges])
+                
+            log_fact_k = log_fact(e)
 
-    # Test code
-    '''
-    model2 = VAEG(hparams, placeholders, 30, 1)
-    model2.restore(hparams.out_dir)
-    hparams.sample = True
-    i = 0
-    G_good = load_embeddings(hparams.z_dir+'train0.txt')
-    G_bad = load_embeddings(hparams.z_dir+'test_11.txt')
-    
-    #model2.sample_graph_slerp(hparams, placeholders, 5, G_good, G_bad, num=29)
-    
-    while i < 10:
-        G_bad = model2.sample_graph_slerp(hparams, placeholders, i, G_good, G_bad, num=29)
-
-        i+=1
-   #while i < 20:
-    #    model2.sample_graph(hparams, placeholders, i, 29)
-    #    i += 1
-    #G_good = load_
-    #i = 0
-    #while i < 10:
-    #    model2.sample_graph(hparams, placeholders, i, 36)
-    #    i += 1
-
-    #model2.plot_hspace(hparams, placeholders, 30)    
-    '''
+            # Training
+            model = VAEG(hparams, placeholders, num_nodes, num_features, edges, log_fact_k, hde)
+            model.restore(hparams.out_dir)
+            model.train(placeholders, hparams, adj, weight, weight_bin, features)
+            tf.get_variable_scope().reuse_variables()

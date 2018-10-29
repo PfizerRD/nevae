@@ -17,5 +17,5 @@ if __name__ == "__main__":
         # print line
         if line in database_smiles:
             count += 1
-    print "common", count
-    print "novel", (1-count/molcount)
+    print("common", count)
+    print("novel", (1-count/molcount))

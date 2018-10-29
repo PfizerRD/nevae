@@ -24,7 +24,7 @@ if __name__ == "__main__":
     path = sys.argv[1]+'*'
 
     for fname in sorted(glob.glob(path)):
-        print fname
+        print(fname)
         f = open(fname, 'rb')
         G = nx.read_edgelist(f, nodetype=int)
         # = np.argsort(degree_seq)

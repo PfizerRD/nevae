@@ -300,6 +300,7 @@ class VAEG(VAEGConfig):
         saver = tf.train.Saver(tf.global_variables())
         ckpt = tf.train.get_checkpoint_state(savedir)
         if ckpt == None or ckpt.model_checkpoint_path == None:
+            print("Initialized")
             self.initialize()
         else:
             print("Load the model from {}".format(ckpt.model_checkpoint_path))
@@ -329,6 +330,7 @@ class VAEG(VAEGConfig):
                 self.count = i
                 if len(self.edges[self.count]) == 0:
                     continue
+
                 # Learning rate decay
                 #self.sess.run(tf.assign(self.lr, self.lr * (self.decay ** epoch)))
                 feed_dict = construct_feed_dict(
@@ -348,7 +350,7 @@ class VAEG(VAEGConfig):
 
                 grad_vals = self.sess.run(
                     [g[0] for g in self.grad], feed_dict=feed_dict)
-                for j in xrange(len(self.grad_placeholder)):
+                for j in range(len(self.grad_placeholder)):
                     feed_dict.update(
                         {self.grad_placeholder[j][0]: grad_vals[j]})
                 input_, train_loss, _, probdict, cx, w_edge = self.sess.run(
@@ -367,8 +369,17 @@ class VAEG(VAEGConfig):
                     logger.info("model saved to {}".format(checkpoint_path))
             end = time.time()
             print("Time taken for a batch: ", end - start)
-        f1 = open(hparams.out_dir+'/iteration.txt', 'w')
-        f1.write(str(iteration))
+        # f1 = open(hparams.out_dir+'/iteration.txt', 'w')
+        # f1.write(str(iteration))
+
+        # # print(train_loss)
+        # print("{}/{}(epoch {}), train_loss = {:.6f}".format(iteration,
+        #                                                     num_epochs, epoch + 1, train_loss))
+        # # print(probdict)
+        # checkpoint_path = os.path.join(savedir, 'model.ckpt')
+        # saver.save(self.sess, checkpoint_path,
+        #            global_step=iteration)
+        # logger.info("model saved to {}".format(checkpoint_path))
 
     def getembeddings(self, hparams, placeholders, adj, deg, weight_bin, weight):
 

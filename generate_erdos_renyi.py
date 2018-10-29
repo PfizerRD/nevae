@@ -25,9 +25,9 @@ def create_graph(n, m, p):
     G = nx.barabasi_albert_graph(n, m)
     #G = nx.powerlaw_cluster_graph(n,m,p)
     #nx.draw_networkx(G, with_labels= True)
-    print G.nodes()
+    print(G.nodes())
     degree_sequence = list(nx.degree(G).values())
-    print degree_sequence
+    print(degree_sequence)
     # print G.neighbors(0)
     # plt.axis('off')
     # plt.show()
